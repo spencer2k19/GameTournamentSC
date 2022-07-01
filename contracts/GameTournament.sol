@@ -31,6 +31,12 @@ contract GameTournament is Ownable {
     //event when creating new tournament
     event TournamentAdded(uint256 tournamentId,address user);
 
+    //even when registered user to tournament
+    event UserRegistered(uint256 tournamentId,string nickname,address user);
+
+    //even when reward is claimed
+    event RewardsClaimed(uint256 amount,string nickname,address user);
+
 
 
     //add tournament
@@ -63,9 +69,12 @@ contract GameTournament is Ownable {
     //register user to tournament
     function registerToTournament(uint256 tournamentId,string memory nickname) public payable {
         Tournament storage tournament = allTournaments[indexTournaments[tournamentId]];
+        require(tournament.isStarted == false,"The tournament has already started");
+        require(tournament.users[nickname] != msg.sender,"You are already registered");
         require(msg.value >= tournament.minimumBet,"Ether sent is not correct");
         tournament.users[nickname] = msg.sender;
         tournament.totalPrice += msg.value;
+        emit UserRegistered(tournamentId,nickname,tournament.users[nickname]);
     }
 
 
@@ -73,7 +82,7 @@ contract GameTournament is Ownable {
 
 
     //to abandon
-    function abandon(uint256 tournamentId,string memory nickname) public payable {
+    function abandon(uint256 tournamentId,string memory nickname) public {
         Tournament storage tournament = allTournaments[indexTournaments[tournamentId]];
         tournament.users[nickname] = address(0);
 
@@ -107,10 +116,12 @@ contract GameTournament is Ownable {
         require(tournament.winners[userAddress] >0, "You are not one of the winners");
         require(!tournament.rewardsClaimed[userAddress],"You have already claimed your rewards");
         tournament.rewardsClaimed[userAddress] = true;
+        
 
         //make the payment
         (bool sent, ) =  userAddress.call{value: tournament.winners[userAddress]}("");
         require(sent,"Failed to sent Ether");
+        emit RewardsClaimed(tournament.winners[userAddress],nickname,userAddress);
     }
 
 
